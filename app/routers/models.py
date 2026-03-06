@@ -9,3 +9,8 @@ class SignupSchema(BaseModel):
     username: str
     password: str
     confirm_password: str
+
+
+class JwtSchema(BaseModel):
+    jwt_token: str
+

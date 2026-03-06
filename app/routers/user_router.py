@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .models import LoginSchema, SignupSchema
+from .models import LoginSchema, SignupSchema, JwtSchema
 import sqlite3
 import jwt
 import bcrypt
@@ -101,6 +101,33 @@ async def signup(data: SignupSchema):
 
 
 
+@router.post('/get_user_info')
+async def get_user_info(data: JwtSchema):
+
+    try:
+        jwt_token = data.jwt_token
+
+        username = await get_username_from_jwt_token(jwt_token)
+        
+        if username:
+
+            user_data = {'username': username}
+            status = 200
+            status_message = 'User data retreived successfully'
+
+        else:
+            status = 400
+            status_message = "Error with JWT token"
+            user_data = None
+
+    except:
+        status = 400
+        status_message = "Error retreiving user data"
+        user_data = None
+
+    return {'status_message': status_message, 'status': status, 'user_data': user_data}
+
+
 
 @router.post('/make_suggestion')
 async def make_suggestion():
@@ -118,3 +145,36 @@ def create_jwt_access_token(data):
     
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
     return encoded_jwt
+
+
+
+async def get_username_from_jwt_token(jwt_token):
+    try:
+        
+        secret_key = os.getenv('JWT_SECRET_KEY')
+        algorithm = os.getenv('JWT_ALGORITHM')
+
+        decoded_jwt = jwt.decode(jwt_token, secret_key, algorithms=[algorithm])
+
+        username = decoded_jwt.get('sub')
+
+        if username is None:
+            return None
+
+        con = sqlite3.connect("group_19.db")
+        cursor = con.cursor()
+
+        query = 'SELECT username FROM users WHERE username = ?'
+        res = cursor.execute(query, (username,))
+        found_username = res.fetchone()
+
+        if found_username:
+
+            return found_username[0]
+        
+        else:
+            return None
+
+    except Exception as e:
+        print(e)
+        return None
